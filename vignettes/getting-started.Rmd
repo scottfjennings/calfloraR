@@ -1,0 +1,126 @@
+---
+title: "Getting started with calfloraR"
+output: html_document
+date: "`r Sys.Date()`"
+---
+
+
+calfloraR is a lightweight package for accessing CalFlora data via an API. It provides functions for retrieving CalFlora metadata and observation records. No data visualization, summary, mapping, or other capacity is built in to this package.
+
+
+## Setting up your CalFlora API key
+
+calfloraR requires a CalFlora API key to access the CalFlora API. Contact CalFlora administrators at spprt@calflora.org to request an API key.
+
+The recommended approach is to store your API key as an environment variable rather than putting it directly in your R scripts or package files. This keeps the key out of your Git repository and makes it available automatically to calfloraR.
+
+To create or edit your user-level .Renviron file, run:
+```{r, eval=FALSE}
+usethis::edit_r_environ()
+```
+
+This should open your R environment file, and print the file path where it is saved.
+
+Add the following line, replacing the example value with your actual CalFlora API key:
+
+`CALFLORA_API_KEY=your_api_key_here`
+
+Save the file and restart R. You can check that R can access the key with:
+```{r, eval=FALSE}
+Sys.getenv("CALFLORA_API_KEY")
+```
+
+Once the key is set, you do not need to supply it when using calfloraR functions. For example:
+
+```{r, eval=FALSE}
+my_params <- list(
+  shapeId = "rs1515",
+  dateAfter = "1960-01-01",
+  dateBefore = "2025-12-31"
+)
+
+observations <- cf_observations_df(params = my_params)
+```
+
+The API key can also be supplied explicitly using the api_key argument if needed:
+
+```{r, eval=FALSE}
+observations <- cf_observations_df(
+  params = my_params,
+  api_key = "your_api_key_here"
+)
+```
+
+Do not commit your .Renviron file or API key to GitHub.
+
+## Downloading metadata
+
+The first step in constructing a CalFlora query is often to look at the available metadata. cf_metadata_df() retrieves metadata from several CalFlora API endpoints.
+
+For example, to retrieve available column sets:
+
+```{r, eval=FALSE}
+calflora_columnsets <- cf_metadata_df("columnsets")
+```
+
+To retrieve available search polygons:
+
+```{r, eval=FALSE}
+calflora_searchPolygons <- cf_metadata_df("searchPolygons")
+```
+
+To retrieve available plant lists:
+
+```{r, eval=FALSE}
+calflora_plantlists <- cf_metadata_df("plantlists")
+```
+
+And to retrieve available projects:
+
+```{r, eval=FALSE}
+calflora_projects <- cf_metadata_df("projects")
+```
+
+These metadata tables contain IDs that can be used when constructing queries with `cf_observations_df()`. For example, a project's ID can be supplied using the `projectIds` parameter, while a search polygon's ID can be supplied using `shapeId`.
+
+
+## Defining query parameters
+
+The `cf_observations_df()` function has two arguments:
+
+* `params`: a named list containing query parameters for the CalFlora API
+* `api_key`: your CalFlora API key. If omitted, calfloraR uses the CALFLORA_API_KEY environment variable.
+
+The params argument is where you specify what data you want from CalFlora. The names of the elements in this list, such as `shapeId`, `csetId`, and `projectIds`, are defined by the CalFlora API rather than by calfloraR.
+
+For example, you can create a list of CalFlora query parameters and then pass that list to `cf_observations_df()`:
+
+
+```{r, eval=FALSE}
+my_params <- list(
+  county = "SON",
+  taxon = "Achillea+millefolium",
+  csetId = "316"
+)
+
+obs <- cf_observations_df(params = my_params)
+```
+
+Here, `my_params` is an R object containing the CalFlora API query parameters. `params` is the name of the argument in `cf_observations_df()` that receives that list.
+
+You can also create the list directly inside the function call:
+
+
+```{r, eval=FALSE}
+obs_acr_wt <- cf_observations_df(
+  params = list(
+    shapeId = "rs1515",
+    csetId = "ACR-WT",
+    projectIds = "pr940"
+  )
+)
+```
+
+These two approaches are equivalent. Creating the list separately is useful when you want to inspect, modify, or reuse the same set of query parameters for multiple requests.
+
+
