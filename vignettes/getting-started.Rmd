@@ -1,7 +1,10 @@
 ---
 title: "Getting started with calfloraR"
-output: html_document
+output: rmarkdown::html_vignette
 date: "`r Sys.Date()`"
+vignette: >
+  %\VignetteIndexEntry{Getting started with calfloraR}
+  %\VignetteEngine{knitr::rmarkdown}
 ---
 
 
@@ -12,7 +15,7 @@ calfloraR is a lightweight package for accessing CalFlora data via an API. It pr
 
 calfloraR requires a CalFlora API key to access the CalFlora API. Contact CalFlora administrators at spprt@calflora.org to request an API key.
 
-The recommended approach is to store your API key as an environment variable rather than putting it directly in your R scripts or package files. This keeps the key out of your Git repository and makes it available automatically to calfloraR.
+Your API key should be treated like a password and not shared with others. The recommended approach is to store your API key as an environment variable rather than putting it directly in your R scripts or package files. This keeps the key out of any shared scripts or public locations (e.g. Git repository) and makes it available automatically to calfloraR.
 
 To create or edit your user-level .Renviron file, run:
 ```{r, eval=FALSE}
@@ -51,19 +54,19 @@ observations <- cf_observations_df(
 )
 ```
 
-Do not commit your .Renviron file or API key to GitHub.
+Do not share or commit to Github your .Renviron file or API key.
 
-## Downloading metadata
+## Exploring CalFlora metadata
 
-The first step in constructing a CalFlora query is often to look at the available metadata. cf_metadata_df() retrieves metadata from several CalFlora API endpoints.
+The first step in constructing a CalFlora query is often to look at the available metadata. There are several query parameters you may want to specify to get exactly the data you want, and for each one you need to know the ID CalFlora expects. cf_metadata_df() retrieves metadata from several CalFlora API endpoints to find the ID you need.
 
-For example, to retrieve available column sets:
+For example, you can download data with certain subsets of columns in the full database. To retrieve the metadata table listing the available column sets and their ID's:
 
 ```{r, eval=FALSE}
 calflora_columnsets <- cf_metadata_df("columnsets")
 ```
 
-To retrieve available search polygons:
+You can also build queries to download data for a specific geographic location using a search polygon that has already been uploaded to calflora.org. To retrieve the metadata table listing the available search polygons and their IDs:
 
 ```{r, eval=FALSE}
 calflora_searchPolygons <- cf_metadata_df("searchPolygons")
@@ -99,8 +102,7 @@ For example, you can create a list of CalFlora query parameters and then pass th
 ```{r, eval=FALSE}
 my_params <- list(
   county = "SON",
-  taxon = "Achillea+millefolium",
-  csetId = "316"
+  csetId = "b"
 )
 
 obs <- cf_observations_df(params = my_params)

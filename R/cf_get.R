@@ -20,13 +20,13 @@
 #'
 #' @examples
 #' \dontrun{
-#' calflora_columnsets <- cf_metadata_df("columnsets")
+#' calflora_columnsets <- cf_get("columnsets")
 #'
-#' calflora_projects <- cf_metadata_df("projects")
+#' calflora_projects <- cf_get("projects")
 #' }
 #'
 #' @export
-cf_metadata_df <- function(
+cf_get <- function(
     what_to_get,
     api_key = Sys.getenv("CALFLORA_API_KEY")
 ) {
