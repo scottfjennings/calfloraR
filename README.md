@@ -15,6 +15,9 @@ You can install the development version of calfloraR from [GitHub](https://githu
 pak::pak("scottfjennings/calfloraR")
 ```
 
+### Note; this package is currently in active development. Please regularly reinstall the package to ensure you have access to the most up to date functionality.
+
+
 ## API key
 
 calfloraR requires a CalFlora API key. Store your key in your .Renviron file as CALFLORA_API_KEY so it is available to the package without putting the key directly in your R code.

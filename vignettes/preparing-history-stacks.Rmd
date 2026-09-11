@@ -1,0 +1,155 @@
+---
+title: "Preparing history stacks for use in R"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Preparing history stacks for use in R}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+```
+
+```{r setup}
+library(calfloraR)
+library(dplyr)
+```
+
+### What is a history stack?
+
+From the CalFlora documentation (https://www.calflora.org/entry/help/groupobserv-help.html): "A history stack is a way of organizing multiple records concerning the condition of a single patch over time. In a history stack, all of the records concerning the patch are linked back to the earliest, or root, record."
+
+There is more information about history stacks here: https://www.calflora.org/entry/help/mgo-help.html#stackedit  
+and here: https://www.calflora.org/entry/help/groupobserv-help.html  
+
+### Interacting with history stacks
+
+From the above, we see that the `Root` field is what links all records into a history stack. One of CalFlora's predefined column sets is "Stack View" and this includes the Root and ID fields among others. The stack view column set can be specified in your `cf_observations_df()` query with `params = list(csetId = "t")`.
+
+```{r eval = FALSE}
+
+
+ obs_group228 <- cf_observations_df(params = list(
+   shapeId = "rs1515",
+   csetId = "t"
+ ))
+
+
+head(obs_group228)
+
+
+#                  Date         Gross Area       ID Latitude Longitude Management Status Number of Plants       Observer Root                Taxon
+# 1 2026-06-16 12:15:47               <NA> io185344 37.93008 -122.6812                 r           1 - 10 Scott Jennings <NA> Frangula californica
+# 2 2026-06-16 08:11:43 11.3 Square Meters io185326 37.92581 -122.6755                 r          11 - 50 Scott Jennings <NA>     Delairea odorata
+# 3 2026-06-16 08:09:32  3.1 Square Meters io185323 37.92582 -122.6755                 r           1 - 10 Scott Jennings <NA>   Epilobium ciliatum
+# 4 2026-06-16 08:01:59 52.7 Square Meters io185325 37.92591 -122.6756                 r             <NA> Scott Jennings <NA>     Delairea odorata
+# 5 2026-05-23 17:57:21               <NA> io185324 37.92626 -122.6740                 r                1 Scott Jennings <NA> Centaurea calcitrapa
+# 6 2026-05-21 09:05:30               <NA> io181774 38.16786 -122.8994                 r                1 Scott Jennings <NA>    Dipsacus fullonum
+```
+
+
+One tricky thing about working with history stacks in the `cf_observations_df()` output is that the root record (first record of the stack) will have `NA` in the `Root` field. For instance, compare this:    
+
+```{r eval = FALSE}
+
+obs_group228 |> 
+  filter(Root == "cbo4602") |>
+  arrange(Root, Date) |> 
+  head()
+
+#                 Date           Gross Area       ID Latitude Longitude Management Status Number of Plants    Observer    Root                 Taxon
+#1 2019-03-02 11:02:19  501.7 Square Meters  mg78859 37.93210 -122.6845                 x       101 - 1000 Henry Inman cbo4602 Genista monspessulana
+#2 2024-04-24 17:40:59 1338.5 Square Meters mg240659 37.93219 -122.6844                 v       101 - 1000 Henry Inman cbo4602 Genista monspessulana
+```
+
+With this:  
+
+
+```{r eval = FALSE}
+
+obs_group228 |> 
+  filter(ID == "cbo4602" | Root == "cbo4602") |> 
+  arrange(Root, Date) |> 
+  head()
+
+#                 Date           Gross Area       ID Latitude Longitude Management Status Number of Plants           Observer    Root                 Taxon
+#1 2019-03-02 11:02:19  501.7 Square Meters  mg78859 37.93210 -122.6845                 x       101 - 1000        Henry Inman cbo4602 Genista monspessulana
+#2 2024-04-24 17:40:59 1338.5 Square Meters mg240659 37.93219 -122.6844                 v       101 - 1000        Henry Inman cbo4602 Genista monspessulana
+#3 2012-02-11 00:00:00              1 Acres  cbo4602 37.93208 -122.6844                 r     1001 - 10000 Matthew Danielczyk    <NA> Genista monspessulana
+```
+
+The problem with this is that if you try to sort by Root and Date you will not see the full sequence of records for each history stack together because the root records will all be sent to the bottom of the dataframe.   
+
+The workaround in R is to replace any `Root == NA` values with the ID for that record:  
+
+```{r eval = FALSE}
+
+obs_group228_stacks <- obs_group228 |> 
+  mutate(Root = ifelse(is.na(Root), ID, Root))
+
+
+obs_group228_stacks |> 
+  filter(Root == "cbo4602") |>
+  arrange(Root, Date) |> 
+  head()
+
+#                  Date           Gross Area       ID Latitude Longitude Management Status Number of Plants           Observer    Root                 Taxon
+# 1 2012-02-11 00:00:00              1 Acres  cbo4602 37.93208 -122.6844                 r     1001 - 10000 Matthew Danielczyk cbo4602 Genista monspessulana
+# 2 2019-03-02 11:02:19  501.7 Square Meters  mg78859 37.93210 -122.6845                 x       101 - 1000        Henry Inman cbo4602 Genista monspessulana
+# 3 2024-04-24 17:40:59 1338.5 Square Meters mg240659 37.93219 -122.6844                 v       101 - 1000        Henry Inman cbo4602 Genista monspessulana
+
+
+
+```
+
+
+
+
+Now, sorting the entire dataframe on simply Root and Date will appropriately sort all records of a history stack. It is also now possible to do grouped operations of history stacks. For instance, you may want to count how many assessments each history stack has:
+
+
+```{r eval = FALSE}
+
+obs_group228_stacks <- obs_group228_stacks |> 
+  group_by(Root) |> 
+  mutate(num.assessments = n())
+  
+
+head(obs_group228_stacks, 20)
+
+# A tibble: 20 × 11
+# Groups:   Root [19]
+#    Date                `Gross Area`          ID       Latitude Longitude `Management Status` `Number of Plants` Observer          Root     Taxon                  num.assessments
+#    <chr>               <chr>                 <chr>       <dbl>     <dbl> <chr>               <chr>              <chr>             <chr>    <chr>                            <int>
+#  1 2026-08-11 10:50:11 1.2 Square Meters     mg325746     37.9     -123. n                   0                  David Greenberger mg224008 Dittrichia graveolens                7
+#  2 2026-06-16 12:15:47 NA                    io185344     37.9     -123. r                   1 - 10             Scott Jennings    io185344 Frangula californica                 1
+#  3 2026-06-16 08:11:43 11.3 Square Meters    io185326     37.9     -123. r                   11 - 50            Scott Jennings    io185326 Delairea odorata                     1
+#  4 2026-06-16 08:09:32 3.1 Square Meters     io185323     37.9     -123. r                   1 - 10             Scott Jennings    io185323 Epilobium ciliatum                   1
+#  5 2026-06-16 08:01:59 52.7 Square Meters    io185325     37.9     -123. r                   NA                 Scott Jennings    io185325 Delairea odorata                     1
+#  6 2026-05-23 17:57:21 NA                    io185324     37.9     -123. r                   1                  Scott Jennings    io185324 Centaurea calcitrapa                 1
+#  7 2026-01-29 00:00:00 137.3 Square Meters   po287481     37.9     -123. m                   35                 Maria Alvarez     io151704 Genista monspessulana                2
+#  8 2026-01-29 00:00:00 13508.8 Square Meters po287475     37.9     -123. m                   1                  Maria Alvarez     po287475 Ehrharta erecta                      1
+#  9 2026-01-29 00:00:00 13991.3 Square Meters po287479     37.9     -123. r                   1                  Maria Alvarez     po287479 Ehrharta erecta                      1
+# 10 2026-01-29 00:00:00 13991.3 Square Meters po287478     37.9     -123. r                   1                  Maria Alvarez     po287478 Ehrharta erecta                      1
+# 11 2025-12-30 15:49:44 NA                    mg295010     37.9     -123. r                   11 - 50            Elliot Gunnison   mg295010 Ehrharta erecta                      1
+# 12 2025-12-30 15:48:44 60.8 Square Meters    mg294833     37.9     -123. r                   11 - 50            El Byrne          mg294833 Euphorbia oblongata                  1
+# 13 2025-09-26 00:00:00 1.2 Square Meters     po282158     37.9     -123. n                   0                  David Greenberger mg224008 Dittrichia graveolens                7
+# 14 2025-09-24 13:49:09 0.7 Square Meters     mg289707     37.9     -123. m                   2                  Henry Inman       mg289707 Hypericum grandifolium               1
+# 15 2025-09-24 13:46:07 11.3 Square Meters    mg289706     37.9     -123. m                   3                  Henry Inman       mg289706 Hypericum grandifolium               1
+# 16 2025-09-24 13:23:50 25.4 Square Meters    mg289705     37.9     -123. m                   10                 Henry Inman       mg289705 Hypericum grandifolium               1
+# 17 2025-09-11 12:31:46 279.8 Square Meters   mg289007     37.9     -123. r                   1+                 Henry Inman       mg289007 Delairea odorata                     1
+# 18 2025-09-10 15:35:08 177.6 Square Meters   mg288813     37.9     -123. v                   1+                 Henry Inman       po122869 Delairea odorata                    17
+# 19 2025-09-10 14:23:22 116.1 Square Meters   mg288812     37.9     -123. v                   1+                 Henry Inman       mg108282 Delairea odorata                     2
+# 20 2025-09-10 14:04:02 246.8 Square Meters   mg288809     37.9     -123. v                   1+                 Henry Inman       mg155267 Delairea odorata                     2
+
+```
+
+
+
+
+
+

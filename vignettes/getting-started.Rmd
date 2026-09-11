@@ -56,32 +56,91 @@ observations <- cf_observations_df(
 
 Do not share or commit to Github your .Renviron file or API key.
 
-## Exploring CalFlora metadata
 
-The first step in constructing a CalFlora query is often to look at the available metadata. There are several query parameters you may want to specify to get exactly the data you want, and for each one you need to know the ID CalFlora expects. cf_metadata_df() retrieves metadata from several CalFlora API endpoints to find the ID you need.
+## Getting data from CalFlora via the API 
+
+Once you have your CalFlora API key saved to your REnvironment, you are ready to download some data.
+
+
+`cf_observations_df()` accesses the observations endpoint. This is where the actual plant observations are stored and therefore this will probably be the function you use the most.  `cf_observations_df()` has two arguments:
+
+* `params`: a named list containing query parameters for the CalFlora API
+* `api_key`: your CalFlora API key. If omitted, calfloraR uses the CALFLORA_API_KEY environment variable.
+
+The params argument is where you specify what data and columns you want from CalFlora. In the example below, we download all plant records collected in Sonoma County during the first 10 days of 2026.
+
+
+```{r, eval=FALSE}
+
+obs <- cf_observations_df(params = list(
+  county = "SON",
+  dateAfter = "2026-01-01", # start of your date range
+  dateBefore = "2026-01-10"  # end of your date range
+))
+
+head(obs)
+
+```
+
+```{r}
+#  Access    Common Name                Date Group           ID Latitude                           Location Description Longitude      Observer                 Taxon
+#1      a   French broom 2026-01-10 13:52:30   211     mg297171 38.45666                                           <NA> -122.5749 John Fairbank Genista monspessulana
+#2      a   French broom 2026-01-10 13:11:56   211     mg297170 38.45989                                           <NA> -122.5725 John Fairbank Genista monspessulana
+#3      a Eggleaf spurge 2026-01-09 16:40:31   211     mg297169 38.36040                                           <NA> -122.5998 John Fairbank   Euphorbia oblongata
+#4      z      milkmaids 2026-01-07 00:00:00    52 in:333938740 38.30063                          Sonoma, CA 95476, USA -122.4569       jay9999 Cardamine californica
+#5      z       Adiantum 2026-01-07 00:00:00    52 in:333938771 38.30498                          Sonoma, CA 95476, USA -122.4551       jay9999     Adiantum jordanii
+#6      a  Coast redwood 2026-01-06 23:21:18     0      mu61968 38.53530 Armstrong Woods Rd, Guerneville, CA 95446, USA -123.0034   Abe Doherty  Sequoia sempervirens
+ 
+```
+
+The names of the elements in the params list, such as `shapeId`, `csetId`, and `projectIds`, are defined by the CalFlora API rather than by calfloraR. Figuring out exactly which names CalFlora expects and which values to supply to get the particular data you want will require you to access other endpoints of the CalFlora API to investigate CalFlora data structure and metadata.
+
+This is where the `cf_get()` function comes in handy.
+
+`cf_get()` is a generic function that provides access to any endpoint in the CalFLora API. You can see what endpoints there are at the CalFlora API documentation: https://api.calflora.org/docs. 
+
+
+The `cf_get()` function has two arguments:
+
+* `endpoint`: the name of the endpoint you want to access
+* `api_key`: your CalFlora API key. If omitted, calfloraR uses the CALFLORA_API_KEY environment variable.
+
+For example, to access the columnsets endpoint, you would do:
+
+```{r, eval=FALSE}
+calflora_columnsets <- cf_get("columnsets")
+```
+
+
+Many of the endpoints will probably not be useful to most R users who want to interact with plant data. But several endpoints provide access to information that is needed to build effective API queries. There are instructions below but first just a quick example of how to use a more specific access function to download data from a particular endpoint and matching a specific query.
+
+
+
+
+The first step in constructing a CalFlora query is often to look at the available metadata. There are several query parameters you may want to specify to get exactly the data you want, and for each one you need to know the ID CalFlora expects. cf_get() retrieves metadata from several CalFlora API endpoints to find the ID you need.
 
 For example, you can download data with certain subsets of columns in the full database. To retrieve the metadata table listing the available column sets and their ID's:
 
 ```{r, eval=FALSE}
-calflora_columnsets <- cf_metadata_df("columnsets")
+calflora_columnsets <- cf_get("columnsets")
 ```
 
 You can also build queries to download data for a specific geographic location using a search polygon that has already been uploaded to calflora.org. To retrieve the metadata table listing the available search polygons and their IDs:
 
 ```{r, eval=FALSE}
-calflora_searchPolygons <- cf_metadata_df("searchPolygons")
+calflora_searchPolygons <- cf_get("searchPolygons")
 ```
 
 To retrieve available plant lists:
 
 ```{r, eval=FALSE}
-calflora_plantlists <- cf_metadata_df("plantlists")
+calflora_plantlists <- cf_get("plantlists")
 ```
 
 And to retrieve available projects:
 
 ```{r, eval=FALSE}
-calflora_projects <- cf_metadata_df("projects")
+calflora_projects <- cf_get("projects")
 ```
 
 These metadata tables contain IDs that can be used when constructing queries with `cf_observations_df()`. For example, a project's ID can be supplied using the `projectIds` parameter, while a search polygon's ID can be supplied using `shapeId`.
@@ -89,20 +148,14 @@ These metadata tables contain IDs that can be used when constructing queries wit
 
 ## Defining query parameters
 
-The `cf_observations_df()` function has two arguments:
-
-* `params`: a named list containing query parameters for the CalFlora API
-* `api_key`: your CalFlora API key. If omitted, calfloraR uses the CALFLORA_API_KEY environment variable.
-
-The params argument is where you specify what data you want from CalFlora. The names of the elements in this list, such as `shapeId`, `csetId`, and `projectIds`, are defined by the CalFlora API rather than by calfloraR.
-
 For example, you can create a list of CalFlora query parameters and then pass that list to `cf_observations_df()`:
 
 
 ```{r, eval=FALSE}
 my_params <- list(
   county = "SON",
-  csetId = "b"
+  csetId = "b",
+  taxon = "Achillea millefolium"
 )
 
 obs <- cf_observations_df(params = my_params)
@@ -126,3 +179,5 @@ obs_acr_wt <- cf_observations_df(
 These two approaches are equivalent. Creating the list separately is useful when you want to inspect, modify, or reuse the same set of query parameters for multiple requests.
 
 
+
+* Note: If you know how to string together query parameters into valid URLs to feed into the API you can also technically access specific subsets of information within a particular endpoint with `cf_get()`, but that is tedious and error prone so calfloraR has cf_observations_df() and other (coming soon) convenience functions to access specific endpoints and build correct URLs for you.*

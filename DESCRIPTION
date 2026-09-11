@@ -13,6 +13,7 @@ BugReports: https://github.com/scottfjennings/calfloraR/issues
 Imports:
     httr2
 Suggests: 
+    dplyr,
     knitr,
     rmarkdown,
     testthat (>= 3.0.0)
